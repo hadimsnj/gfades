@@ -1,3 +1,11 @@
+// ==================================================================== //
+// ==================================================================== //
+// 	This file is part of the gFADES GNN accelerator has been written    //
+//  at Linkoping University for the WASP project						//
+// 						        								        //
+// 	Author : Jose Nunez-Yanez											//
+// ==================================================================== //
+// ==================================================================== //
 
 #include <iostream>
 #include <stdlib.h>
@@ -12,8 +20,8 @@
 #include <sstream> // std::stringstream
 
 #include "ap_int.h"
-#include "matrix_mult.h"
-#include "kernelMatrixmult.h"
+#include "gfades.h"
+#include "gfades_tb.h"
 
 
 #define max_N_adj MAX_N
