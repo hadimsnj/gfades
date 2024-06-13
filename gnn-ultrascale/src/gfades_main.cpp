@@ -1024,9 +1024,6 @@ void dsp_kernel_wrapper_adj_2(int block_size,
 
                             ITYPE b_block1[B_HEIGHT/4][B_WIDTH_BLOCK],
                             ITYPE b_block2[B_HEIGHT/4][B_WIDTH_BLOCK],
-                            ITYPE b_block4[B_HEIGHT/4][B_WIDTH_BLOCK],
-
-                            
                             
                             ITYPE acc2[B_WIDTH_BLOCK][SPMM_BLOCK])
 {
@@ -1209,10 +1206,6 @@ void dsp_kernel_wrapper_adj_1(int block_size,
                             hls::stream<int> &col_indices_fifo,
 
                             ITYPE b_block1[B_HEIGHT][B_WIDTH_BLOCK],
-                            ITYPE b_block4[B_HEIGHT/4][B_WIDTH_BLOCK],
-
-                            
-                            
                             ITYPE acc2[B_WIDTH_BLOCK][SPMM_BLOCK])
 {
 
@@ -1540,10 +1533,6 @@ void dsp_kernel_wrapper_fea(bool gemm_mode,
 // ==================================================================== //
 void compute2_4(bool relu,
                 int block_size,
-                
-                
-                
-                
                 int first_row,
                 int row_count,
                 
@@ -1564,15 +1553,12 @@ void compute2_4(bool relu,
                 int tail)
 {
 
-
 	    DTYPE A_accel[A_WIDTH];
 		ITYPE acc[B_WIDTH_BLOCK];
 		ITYPE acc2[B_WIDTH_BLOCK][SPMM_BLOCK];
 
 		#pragma HLS ARRAY_PARTITION variable=acc complete
 		#pragma HLS ARRAY_PARTITION variable=acc2 complete dim=0
-
-
 
         int B_WIDTH_INT;
         ITYPE C_fifo_val;
@@ -1608,9 +1594,8 @@ void compute2_4(bool relu,
 
 			}
 
-			dsp_kernel_wrapper_adj_4(block_size, rnnz, A_fifo, col_indices_fifo, 
-                                     B_accel1, B_accel2, B_accel3, B_accel4,
-                                       acc2);
+			dsp_kernel_wrapper_adj_2(block_size, rnnz, A_fifo, col_indices_fifo, 
+                                     B_accel1, B_accel2, acc2);
 
 
 			LOOP_C_BUF1:for(int j = 0; j < B_WIDTH_BLOCK; j++){
@@ -1674,8 +1659,6 @@ void compute2_2(int block_size,
                 ITYPE B_accel1[B_HEIGHT/2][B_WIDTH_BLOCK],
                 ITYPE B_accel2[B_HEIGHT/2][B_WIDTH_BLOCK],
 
-                ITYPE B_accel4[B_HEIGHT/4][B_WIDTH_BLOCK],
-
                 hls::stream<ITYPE> C_fifo[B_WIDTH_BLOCK][SPMM_BLOCK],
                 
                 int B_index,
@@ -1725,7 +1708,7 @@ void compute2_2(int block_size,
         }
 
         dsp_kernel_wrapper_adj_2(block_size, rnnz, A_fifo,col_indices_fifo, B_accel1,
-                                 B_accel2,   acc2);
+                                 B_accel2, acc2);
 
 
         LOOP_C_BUF1: for(int j = 0; j < B_WIDTH_BLOCK; j++){
@@ -1793,6 +1776,7 @@ void compute2_1(bool relu,
 	DTYPE A_accel[A_WIDTH];
 	ITYPE acc[B_WIDTH_BLOCK];
 	ITYPE acc2[B_WIDTH_BLOCK][SPMM_BLOCK];
+    ITYPE C_fifo_val;
 	
     #pragma HLS ARRAY_PARTITION variable=acc complete
 	#pragma HLS ARRAY_PARTITION variable=acc2 complete dim=0
@@ -1972,8 +1956,6 @@ void compute1_1(bool gemm_mode,
 // ==================================================================== //
 void compute1_2(bool gemm_mode,
                 
-                
-                
                 int first_row,
                 int row_count,
                 
@@ -1984,8 +1966,6 @@ void compute1_2(bool gemm_mode,
                 BTYPE B_accel[B_HEIGHT][B_WIDTH_BLOCK],
                 ITYPE C_buf1[B_HEIGHT/4][B_WIDTH_BLOCK],
                 ITYPE C_buf2[B_HEIGHT/4][B_WIDTH_BLOCK],
-
-                ITYPE C_buf4[B_HEIGHT/4][B_WIDTH_BLOCK],
 
                 int B_index,
                 int B_index_loop,
@@ -2027,15 +2007,15 @@ void compute1_2(bool gemm_mode,
 		}
 
  		
-		dsp_kernel_wrapper_fea(gemm_mode, rnnz, A_fifo, col_indices_fifo, B_accel,   acc2);
+		dsp_kernel_wrapper_fea(gemm_mode, rnnz, A_fifo, col_indices_fifo, B_accel, acc2);
 
 		LOOP_C_BUF1:for(int j = 0; j < C_WIDTH_BLOCK; j++){
 	        #pragma HLS UNROLL
 			
             #if (USE_TAIL == 1)
-			if (j < B_WIDTH_INT)
+			if (j < B_WIDTH_INT){
 			#endif
-			{
+			
 				
 				#ifdef simulation
                     if (acc2[j] < acc2_fea_min)
@@ -2050,9 +2030,12 @@ void compute1_2(bool gemm_mode,
                     C_buf1[A_index + i][j] = acc2[j][i];
 					C_buf2[A_index + i][j] = acc2[j][i];
 				}
-	
 
+            
+            #if (USE_TAIL == 1)
 			}
+			#endif
+			
 		}
     } //A_index loop
 }
@@ -2360,11 +2343,11 @@ void loop_fea(  bool gemm_mode,
                    rnnz_fifo_fea2, B_index_loop, tail, rowPtr_fea2, columnIndex_fea2, values_fea2);
 
             #if ADJ_THREADS == 2
-                compute1_2(gemm_mode,   first_row1, row_count1, 
+                compute1_2(gemm_mode,  first_row1, row_count1, 
                             A_fifo_fea1, col_indices_fifo_fea1, rnnz_fifo_fea1, B_accel1, C_fea11, C_fea12,
                             B_index, B_index_loop, tail);
                 
-                compute1_2(gemm_mode,   first_row2, row_count2, 
+                compute1_2(gemm_mode, first_row2, row_count2, 
                             A_fifo_fea2, col_indices_fifo_fea2, rnnz_fifo_fea2, B_accel2, C_fea21, C_fea22,
                             B_index, B_index_loop, tail);
             #endif
@@ -2444,8 +2427,8 @@ void loop_fea(  bool gemm_mode,
             
 
 
-            int first_row1,first_row2,first_row3,first_row4;
-            int row_count1,row_count2,row_count3,row_count4;
+            int first_row1, first_row2, first_row3, first_row4;
+            int row_count1, row_count2, row_count3, row_count4;
 
 
             int N_fea_block = N_fea / 4;
@@ -2454,7 +2437,7 @@ void loop_fea(  bool gemm_mode,
             row_count1 = N_fea_block;
             row_count2 = N_fea_block;
             row_count3 = N_fea_block;
-            row_count4 = N_fea_block+N_fea_rest;
+            row_count4 = N_fea_block + N_fea_rest;
             
             first_row1 = 0;
             first_row2 = N_fea_block;
@@ -2497,16 +2480,16 @@ void loop_fea(  bool gemm_mode,
 
             #if ADJ_THREADS == 2
 
-                compute1_2( gemm_mode,   first_row1,row_count1,
+                compute1_2( gemm_mode, first_row1, row_count1,
                             A_fifo_fea1, col_indices_fifo_fea1, rnnz_fifo_fea1, B_accel1, C_fea11, 
                             C_fea12, B_index, B_index_loop, tail);
-                compute1_2( gemm_mode,   first_row2,row_count2,
+                compute1_2( gemm_mode, first_row2, row_count2,
                             A_fifo_fea2, col_indices_fifo_fea2, rnnz_fifo_fea2, B_accel2, C_fea21, 
                             C_fea22, B_index, B_index_loop, tail);
-                compute1_2( gemm_mode,   first_row3,row_count3,
+                compute1_2( gemm_mode, first_row3, row_count3,
                             A_fifo_fea3, col_indices_fifo_fea3, rnnz_fifo_fea3, B_accel3, C_fea31, 
                             C_fea32, B_index, B_index_loop, tail);
-                compute1_2( gemm_mode,   first_row4,row_count4,
+                compute1_2( gemm_mode, first_row4, row_count4,
                             A_fifo_fea4, col_indices_fifo_fea4, rnnz_fifo_fea4, B_accel4, C_fea41, 
                             C_fea42, B_index, B_index_loop, tail);
 
@@ -2667,7 +2650,7 @@ void loop_adj(bool relu,
             writec(relu, first_row1, row_count1, P_w, D_fifo1, D1, B_index, B_index_loop, tail);
         #endif
 
-        #if ADJ_THREADS = 2
+        #if ADJ_THREADS == 2
 
             hls::read_lock<buf> C_adj11(C_buffer11);
             hls::read_lock<buf> C_adj12(C_buffer12);
@@ -2682,44 +2665,45 @@ void loop_adj(bool relu,
             #endif
 
 
-            int first_row1,first_row2;
-            int row_count1,row_count2;
+            int first_row1, first_row2;
+            int row_count1, row_count2;
 
-            int N_adj_block = N_adj / ADJ_THREADS;
-            int N_adj_rest = N_adj % ADJ_THREADS;
+            int N_adj_block = N_adj / 2;
+            int N_adj_rest = N_adj % 2;
 
             int N_adj_block_compute = N_adj / FEA_THREADS; // In compute2 each block only contains  N_adj/FEA_THREADS elements
             
             row_count1 = N_adj_block;
-            row_count2 = N_adj_block + N_adj_rest;;
+            row_count2 = N_adj_block + N_adj_rest;
             
             first_row1 = 0;
             first_row2 = N_adj_block;
 
+            reada2(first_row1, row_count1, B_index_loop, tail, A_fifo_adj1, col_indices_fifo_adj1, rnnz_fifo_adj1, rowPtr_adj1, columnIndex_adj1, values_adj1);
             reada2(first_row2, row_count2, B_index_loop, tail, A_fifo_adj2, col_indices_fifo_adj2, rnnz_fifo_adj2, rowPtr_adj2, columnIndex_adj2, values_adj2);
 
             #if FEA_THREADS == 2
 
-            compute2_2(N_adj_block_compute,   first_row1, row_count1, 
-                    A_fifo_adj1, col_indices_fifo_adj1, rnnz_fifo_adj1, C_adj11, C_adj21, 
-                    D_fifo1, B_index, B_index_loop, tail);
+                compute2_2(N_adj_block_compute,   first_row1, row_count1, 
+                        A_fifo_adj1, col_indices_fifo_adj1, rnnz_fifo_adj1, C_adj11, C_adj21, 
+                        D_fifo1, B_index, B_index_loop, tail);
 
-            compute2_2(N_adj_block_compute,   first_row2, row_count2, 
-                    A_fifo_adj2, col_indices_fifo_adj2, rnnz_fifo_adj2, C_adj12, C_adj22,
-                    D_fifo2, B_index, B_index_loop, tail);
+                compute2_2(N_adj_block_compute,   first_row2, row_count2, 
+                        A_fifo_adj2, col_indices_fifo_adj2, rnnz_fifo_adj2, C_adj12, C_adj22,
+                        D_fifo2, B_index, B_index_loop, tail);
 
             #endif
 
             #if FEA_THREADS == 4
 
+                compute2_4(relu, N_adj_block_compute, first_row1, row_count1, 
+                            A_fifo_adj1, col_indices_fifo_adj1, rnnz_fifo_adj1, C_adj11, C_adj21,
+                            C_adj31, C_adj41, D_fifo1, B_index, B_index_loop, tail);
 
-            compute2_4(relu, N_adj_block_compute,   first_row1, row_count1, 
-                        A_fifo_adj1, col_indices_fifo_adj1, rnnz_fifo_adj1, C_adj11, C_adj21,
-                        C_adj31, C_adj41, D_fifo1, B_index, B_index_loop, tail);
+                compute2_4(relu, N_adj_block_compute, first_row2, row_count2, 
+                        A_fifo_adj2, col_indices_fifo_adj2, rnnz_fifo_adj2, C_adj12, C_adj22, C_adj32, C_adj42,
+                        D_fifo2, B_index, B_index_loop, tail);
 
-            compute2_4(relu, N_adj_block_compute,   first_row2, row_count2, 
-                    A_fifo_adj2, col_indices_fifo_adj2, rnnz_fifo_adj2, C_adj12, C_adj22, C_adj32, C_adj42,
-                    D_fifo2, B_index, B_index_loop, tail);
 
             #endif
 
@@ -2729,7 +2713,7 @@ void loop_adj(bool relu,
         #endif
 
 
-        #if ADJ_THREADS = 4
+        #if ADJ_THREADS == 4
 
             hls::read_lock<buf> C_adj11(C_buffer11);
             hls::read_lock<buf> C_adj12(C_buffer12);
@@ -2954,6 +2938,7 @@ void gfades_wrapper(bool gemm_mode,
 // ==================================================================== //
 
 void gfades(bool gemm_mode,
+			bool relu,
 
              int N_adj, 
              int M_adj, 
@@ -3086,8 +3071,6 @@ void gfades(bool gemm_mode,
     #pragma HLS INTERFACE s_axilite port=D4  bundle = control
     // ==================================================================== //
     // ==================================================================== //
-
-    bool relu = 0;
  
 
     INT32 tail = P_w % B_WIDTH_BLOCK;
@@ -3103,6 +3086,9 @@ void gfades(bool gemm_mode,
     D2 += N_adj_block * P_w;
     D3 += 2 * N_adj_block * P_w;
     D4 += 3 * N_adj_block * P_w;
+
+
+    relu = 0;
 
     gfades_wrapper( gemm_mode,
                     relu,
@@ -3152,3 +3138,5 @@ void gfades(bool gemm_mode,
                     values_adj3,
                     values_adj4);    
 }
+
+

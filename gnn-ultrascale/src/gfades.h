@@ -11,11 +11,11 @@ Wei Matrix - MxP
 
 //#define simulation
 
-#define MAX_N    6144 
-#define MAX_M    6144 
-#define MAX_P    128 
+#define MAX_N    4096 
+#define MAX_M    4096 
+#define MAX_P    32
 
-#define MAX_FIFO 8
+#define MAX_FIFO 16
 
 
 #define A_HEIGHT   MAX_N
@@ -35,11 +35,11 @@ Wei Matrix - MxP
 
 #ifdef EIGHTBIT
 
-	typedef ap_fixed<16, 2> ATYPE;
-	typedef ap_fixed<16, 2> BTYPE;
-	typedef ap_fixed<16, 2> DTYPE;
-	typedef ap_fixed<16, 2> FTYPE;
-	typedef ap_fixed<16, 2> ITYPE;
+	typedef ap_fixed<8, 2> ATYPE;
+	typedef ap_fixed<8, 2> BTYPE;
+	typedef ap_fixed<8, 2> DTYPE;
+	typedef ap_fixed<8, 2> FTYPE;
+	typedef ap_fixed<8, 2> ITYPE;
 
     #define FTYPE_LATENCY_ADJ 1
     #define FTYPE_LATENCY_FEA 1
@@ -71,10 +71,10 @@ Wei Matrix - MxP
 	#define FTYPE_LATENCY_FEA 6 
 #endif
 
-#define FEA_THREADS 4
+#define FEA_THREADS 2
 #define ADJ_THREADS 2
 
-#define SPMM_BLOCK 4
+#define SPMM_BLOCK 1
 #define USE_SBLOCKS 0
 
 
